@@ -38,6 +38,9 @@ export const Header = () => {
                 <User className="w-4 h-4" />
                 {user.email}
               </div>
+              <Button variant="premium" asChild>
+                <Link to="/transform">Transform Room</Link>
+              </Button>
               <Button variant="ghost" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out

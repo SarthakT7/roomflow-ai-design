@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Upload } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroRoom from "@/assets/hero-room.jpg";
 
 export const Hero = () => {
@@ -33,10 +34,12 @@ export const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Button variant="hero" size="lg" className="text-lg">
-              <Upload className="w-5 h-5" />
-              Start Transforming
-              <ArrowRight className="w-5 h-5" />
+            <Button variant="hero" size="lg" className="text-lg" asChild>
+              <Link to="/transform">
+                <Upload className="w-5 h-5" />
+                Start Transforming
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </Button>
             <Button variant="premium" size="lg" className="text-lg">
               View Examples
