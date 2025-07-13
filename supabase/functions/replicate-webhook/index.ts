@@ -13,6 +13,8 @@ serve(async (req) => {
   }
 
   try {
+
+    console.log("webhook received");
     const payload = await req.json()
     
     console.log('Received webhook payload:', JSON.stringify(payload, null, 2))
@@ -48,10 +50,10 @@ serve(async (req) => {
     // Update transformation based on status
     let updateData: any = { status }
 
-    if (status === 'succeeded' && output && Array.isArray(output) && output.length > 0) {
-      updateData.transformed_image_url = output[0]
+    if (status === 'succeeded' && output) {
+      updateData.transformed_image_url = output
       updateData.status = 'completed'
-      console.log('Transformation completed with image:', output[0])
+      console.log('Transformation completed with image:', output)
     } else if (status === 'failed') {
       updateData.status = 'failed'
       console.log('Transformation failed for prediction:', predictionId)
