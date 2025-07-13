@@ -1,0 +1,46 @@
+import { Button } from "@/components/ui/button";
+import { Sparkles, Menu } from "lucide-react";
+
+export const Header = () => {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+      <nav className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-gradient-primary rounded-lg shadow-soft">
+            <Sparkles className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <span className="text-2xl font-bold text-foreground">RoomFlow</span>
+        </div>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-8">
+          <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
+            Features
+          </a>
+          <a href="#examples" className="text-muted-foreground hover:text-primary transition-colors">
+            Examples
+          </a>
+          <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">
+            Pricing
+          </a>
+        </div>
+
+        {/* Auth Buttons */}
+        <div className="hidden md:flex items-center gap-4">
+          <Button variant="ghost">
+            Sign In
+          </Button>
+          <Button variant="default">
+            Get Started
+          </Button>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="w-5 h-5" />
+        </Button>
+      </nav>
+    </header>
+  );
+};
