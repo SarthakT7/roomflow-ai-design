@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      transformations: {
+        Row: {
+          created_at: string
+          id: string
+          original_image_url: string
+          replicate_prediction_id: string | null
+          status: string
+          style_prompt: string
+          transformed_image_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          original_image_url: string
+          replicate_prediction_id?: string | null
+          status?: string
+          style_prompt: string
+          transformed_image_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          original_image_url?: string
+          replicate_prediction_id?: string | null
+          status?: string
+          style_prompt?: string
+          transformed_image_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null
