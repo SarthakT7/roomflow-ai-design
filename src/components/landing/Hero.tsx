@@ -41,8 +41,10 @@ export const Hero = () => {
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
-            <Button variant="premium" size="lg" className="text-lg">
-              View Examples
+            <Button variant="premium" size="lg" className="text-lg" asChild>
+              <Link to="/examples">
+                View Examples
+              </Link>
             </Button>
           </div>
           
