@@ -26,36 +26,6 @@ const examples = [
     description: "Small bedroom redesigned with Nordic aesthetics, featuring natural wood and cozy textiles."
   },
   {
-    id: 3,
-    title: "Kitchen Makeover",
-    style: "Industrial",
-    beforeImage: "https://images.unsplash.com/photo-1556909114-5cea2ff52ebb?w=600&h=400&fit=crop",
-    afterImage: "https://images.unsplash.com/photo-1556909012-f382aa0c2041?w=600&h=400&fit=crop",
-    rating: 4.7,
-    transformTime: "28s",
-    description: "Outdated kitchen transformed into an industrial-style space with exposed elements and modern appliances."
-  },
-  {
-    id: 4,
-    title: "Home Office",
-    style: "Minimalist",
-    beforeImage: "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=600&h=400&fit=crop",
-    afterImage: "https://images.unsplash.com/photo-1586269751724-d5e5c83a8e96?w=600&h=400&fit=crop",
-    rating: 4.9,
-    transformTime: "22s",
-    description: "Cluttered home office redesigned with minimalist principles for maximum productivity and calm."
-  },
-  {
-    id: 5,
-    title: "Dining Room",
-    style: "Bohemian",
-    beforeImage: "https://images.unsplash.com/photo-1577535188647-6b02d3a65aad?w=600&h=400&fit=crop",
-    afterImage: "https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=600&h=400&fit=crop",
-    rating: 4.6,
-    transformTime: "35s",
-    description: "Formal dining room transformed into a vibrant bohemian space with eclectic patterns and plants."
-  },
-  {
     id: 6,
     title: "Bathroom Refresh",
     style: "Spa-like",

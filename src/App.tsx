@@ -10,6 +10,7 @@ import Transform from "./pages/Transform";
 import { PricingPage } from "./pages/Pricing";
 import Examples from "./pages/Examples";
 import NotFound from "./pages/NotFound";
+import RequireAuth from "./pages/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +24,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/transform" element={<Transform />} />
+            <Route path="/transform" element={
+              <RequireAuth>
+                <Transform />
+              </RequireAuth>
+            } />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/examples" element={<Examples />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
