@@ -25,9 +25,9 @@ export const Header = () => {
           <a href="#examples" className="text-muted-foreground hover:text-primary transition-colors">
             Examples
           </a>
-          <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">
+          <Link to="/pricing" className="text-muted-foreground hover:text-primary transition-colors">
             Pricing
-          </a>
+          </Link>
         </div>
 
         {/* Auth Buttons */}

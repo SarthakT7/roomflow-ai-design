@@ -67,17 +67,7 @@ export const Hero = () => {
               className="w-full h-[600px] object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="bg-background/95 backdrop-blur-sm rounded-lg p-4 shadow-soft">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
-                  <span className="text-sm font-medium">AI Transformation Complete</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Modern Scandinavian style applied • 28 seconds
-                </p>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

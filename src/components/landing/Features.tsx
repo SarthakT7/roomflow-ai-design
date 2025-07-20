@@ -66,12 +66,6 @@ export const Features = () => {
               alt="Before and after room transformation comparison" 
               className="w-full h-[500px] object-cover"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-8">
-              <div className="text-center text-white">
-                <h3 className="text-2xl font-bold mb-2">See the Magic in Action</h3>
-                <p className="text-white/90">Real transformations from our users</p>
-              </div>
-            </div>
           </Card>
         </div>
 
