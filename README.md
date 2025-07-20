@@ -21,7 +21,7 @@ RoomFlow is an AI-powered web platform that transforms photos of your rooms into
 
 ## Demo Video
 
-> Example: [Watch the RoomFlow Demo](https://your-demo-link.com)
+> Example: [Watch the RoomFlow Demo](https://youtu.be/WE6yqfj3hL4)
 
 ---
 
