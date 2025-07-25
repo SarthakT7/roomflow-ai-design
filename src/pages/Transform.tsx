@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, Sparkles, ArrowLeft } from "lucide-react";
+import { Upload, Sparkles, ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const INTERIOR_STYLES = [
@@ -189,6 +189,26 @@ const Transform = () => {
     }
   };
 
+  // Download handler for transformed image
+  const handleDownload = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download =  'transformed-room.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      toast({
+        title: 'Download failed',
+        description: 'Could not download the image.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-4">
       <div className="container mx-auto max-w-6xl">
@@ -345,6 +365,16 @@ const Transform = () => {
                       alt="Transformed room"
                       className="w-full rounded-lg object-cover"
                     />
+                   <div className="mt-4 flex justify-center">
+                     <Button
+                       size="sm"
+                       className="flex items-center gap-2"
+                       onClick={() => handleDownload(transformationResult.transformed_image_url)}
+                     >
+                       <Download className="w-4 h-4" />
+                       Download
+                     </Button>
+                   </div>
                   </div>
                 </div>
               ) : (
