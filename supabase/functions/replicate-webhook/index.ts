@@ -13,12 +13,8 @@ serve(async (req) => {
   }
 
   try {
-
-    console.log("webhook received");
     const payload = await req.json()
     
-    console.log('Received webhook payload:', JSON.stringify(payload, null, 2))
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -45,18 +41,14 @@ serve(async (req) => {
       return new Response('Transformation not found', { status: 404 })
     }
 
-    console.log('Found transformation:', transformation.id)
-
     // Update transformation based on status
     let updateData: any = { status }
 
     if (status === 'succeeded' && output) {
       updateData.transformed_image_url = output
       updateData.status = 'completed'
-      console.log('Transformation completed with image:', output)
     } else if (status === 'failed') {
       updateData.status = 'failed'
-      console.log('Transformation failed for prediction:', predictionId)
     }
 
     const { error: updateError } = await supabase
@@ -68,8 +60,6 @@ serve(async (req) => {
       console.error('Error updating transformation:', updateError)
       throw updateError
     }
-
-    console.log('Successfully updated transformation:', transformation.id)
 
     return new Response(
       JSON.stringify({ success: true }),

@@ -16,7 +16,6 @@ serve(async (req) => {
     
   try {
     const { imageUrl, prompt, transformationId } = await req.json();
-    console.log(imageUrl, prompt, transformationId);
 
     if (!imageUrl || !prompt || !transformationId) {
       return new Response(
@@ -38,10 +37,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("Starting room transformation for:", transformationId);
-    console.log("Image URL:", imageUrl);
-    console.log("Prompt:", prompt);
-
     // Create webhook URL for status updates
     const webhookUrl = `${supabaseUrl}/functions/v1/replicate-webhook`;
 
@@ -56,8 +51,6 @@ serve(async (req) => {
       webhook: webhookUrl ,
       webhook_events_filter: ["completed"],
     });
-
-    console.log("Replicate prediction created:", prediction.id);
 
     // Update transformation record with prediction ID
     const { error: updateError } = await supabase
