@@ -10,8 +10,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Upload, Sparkles, ArrowLeft, Download, Wallet } from "lucide-react";
+import { Upload, Sparkles, ArrowLeft, Download, Wallet, Check, X, LayoutDashboard } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const INTERIOR_STYLES = [
@@ -53,12 +52,34 @@ const INTERIOR_STYLES = [
   }
 ];
 
+const ROOM_TYPES = [
+  { id: "living-room", name: "Living Room", emoji: "🛋️" },
+  { id: "bedroom", name: "Bedroom", emoji: "🛏️" },
+  { id: "kitchen", name: "Kitchen", emoji: "🍳" },
+  { id: "bathroom", name: "Bathroom", emoji: "🚿" },
+  { id: "dining-room", name: "Dining Room", emoji: "🍽️" },
+  { id: "home-office", name: "Home Office", emoji: "💻" },
+  { id: "hallway", name: "Hallway", emoji: "🚪" },
+];
+
+const FURNITURE_BY_ROOM: Record<string, string[]> = {
+  "living-room": ["Sofa", "Coffee Table", "TV Stand", "Armchair", "Bookshelf", "Side Table", "Floor Lamp", "Area Rug", "Ottoman", "Curtains", "Wall Art", "Fireplace"],
+  "bedroom": ["Bed", "Wardrobe", "Dresser", "Nightstand", "Desk", "Bench", "Vanity", "Ceiling Light", "Curtains", "Armchair", "Mirror", "Bookshelf"],
+  "kitchen": ["Kitchen Island", "Bar Stools", "Open Shelves", "Pendant Lights", "Pantry Cabinet", "Breakfast Nook", "Pot Rack", "Wine Rack"],
+  "bathroom": ["Vanity", "Mirror", "Bathtub", "Walk-in Shower", "Towel Rack", "Storage Cabinet", "Plant", "Heated Towel Rail"],
+  "dining-room": ["Dining Table", "Dining Chairs", "Sideboard", "Chandelier", "China Cabinet", "Area Rug", "Bar Cart", "Bench Seating"],
+  "home-office": ["Desk", "Office Chair", "Bookshelf", "Filing Cabinet", "Monitor Stand", "Floor Lamp", "Whiteboard", "Sofa", "Coffee Table"],
+  "hallway": ["Console Table", "Mirror", "Coat Rack", "Bench", "Wall Art", "Area Rug", "Shoe Cabinet", "Pendant Light"],
+};
+
+type FurnitureState = "neutral" | "include" | "exclude";
 type Transformation = Tables<"transformations">;
 
 const Transform = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>("");
-  const [includeFurniture, setIncludeFurniture] = useState(true);
+  const [selectedRoomType, setSelectedRoomType] = useState<string>("");
+  const [furnitureSelections, setFurnitureSelections] = useState<Record<string, FurnitureState>>({});
   const [customPrompt, setCustomPrompt] = useState("");
   const [isTransforming, setIsTransforming] = useState(false);
   const [transformationResult, setTransformationResult] = useState<Transformation | null>(null);
@@ -97,10 +118,34 @@ const Transform = () => {
     }
   };
 
+  const handleRoomTypeSelect = (roomId: string) => {
+    if (selectedRoomType === roomId) {
+      setSelectedRoomType("");
+      setFurnitureSelections({});
+    } else {
+      setSelectedRoomType(roomId);
+      setFurnitureSelections({});
+    }
+  };
+
+  const toggleFurniture = (item: string) => {
+    setFurnitureSelections(prev => {
+      const current = prev[item] || "neutral";
+      const next: FurnitureState =
+        current === "neutral" ? "include" :
+        current === "include" ? "exclude" : "neutral";
+      if (next === "neutral") {
+        const { [item]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [item]: next };
+    });
+  };
+
   const uploadImage = async (file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
-    
+
     const { error } = await supabase.storage
       .from('room-images')
       .upload(fileName, file);
@@ -136,22 +181,41 @@ const Transform = () => {
     setIsTransforming(true);
 
     try {
-      // Upload image to Supabase storage
       const imageUrl = await uploadImage(selectedFile);
-      
-      // Build prompt
+
       const style = INTERIOR_STYLES.find(s => s.id === selectedStyle);
       if (!style) throw new Error("Style not found");
 
       let fullPrompt = style.prompt;
-      if (includeFurniture) {
-        fullPrompt += ", fully furnished with stylish furniture, decorative accessories, rugs, lighting fixtures, and wall art";
+
+      if (selectedRoomType) {
+        const roomType = ROOM_TYPES.find(r => r.id === selectedRoomType);
+        if (roomType) {
+          fullPrompt += ` in a ${roomType.name.toLowerCase()}`;
+        }
       }
+
+      const included = Object.entries(furnitureSelections)
+        .filter(([, state]) => state === "include")
+        .map(([item]) => item.toLowerCase());
+      const excluded = Object.entries(furnitureSelections)
+        .filter(([, state]) => state === "exclude")
+        .map(([item]) => item.toLowerCase());
+
+      if (included.length > 0) {
+        fullPrompt += `, featuring ${included.join(", ")}`;
+      } else {
+        fullPrompt += ", fully furnished with stylish furniture, decorative accessories, rugs, and lighting";
+      }
+
+      if (excluded.length > 0) {
+        fullPrompt += `, without any ${excluded.join(", ")}`;
+      }
+
       if (customPrompt.trim()) {
         fullPrompt += `, ${customPrompt.trim()}`;
       }
 
-      // Create transformation record
       const { data: transformation, error: dbError } = await supabase
         .from('transformations')
         .insert({
@@ -169,8 +233,7 @@ const Transform = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Please sign in again before transforming a room.");
 
-      // Call Replicate API
-      const { data, error } = await supabase.functions.invoke('transform-room', {
+      const { error } = await supabase.functions.invoke('transform-room', {
         body: {
           imageUrl,
           prompt: fullPrompt,
@@ -190,8 +253,7 @@ const Transform = () => {
 
       setTransformationResult(transformation);
       refreshBilling();
-      
-      // Poll for completion (simplified - in production you'd use webhooks)
+
       setTimeout(() => {
         checkTransformationStatus(transformation.id);
       }, 10000);
@@ -235,18 +297,17 @@ const Transform = () => {
     }
   };
 
-  // Download handler for transformed image
   const handleDownload = async (url: string) => {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download =  'transformed-room.jpg';
+      link.download = 'transformed-room.jpg';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) {
+    } catch {
       toast({
         title: 'Download failed',
         description: 'Could not download the image.',
@@ -254,6 +315,13 @@ const Transform = () => {
       });
     }
   };
+
+  const furnitureItems = selectedRoomType
+    ? FURNITURE_BY_ROOM[selectedRoomType] ?? []
+    : [];
+
+  const includedCount = Object.values(furnitureSelections).filter(s => s === "include").length;
+  const excludedCount = Object.values(furnitureSelections).filter(s => s === "exclude").length;
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-4">
@@ -395,31 +463,115 @@ const Transform = () => {
           </Card>
         </div>
 
-        {/* Options */}
+        {/* Room Type Selection */}
         <Card className="mt-8 shadow-elegant">
-          <CardContent className="pt-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="furnish-toggle" className="text-base font-medium">Include Furniture</Label>
-                <p className="text-sm text-muted-foreground">Automatically add furniture and decor to the room</p>
-              </div>
-              <Switch
-                id="furnish-toggle"
-                checked={includeFurniture}
-                onCheckedChange={setIncludeFurniture}
-              />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LayoutDashboard className="w-5 h-5" />
+              Room Type
+            </CardTitle>
+            <CardDescription>
+              Tell us what kind of room this is for more accurate results
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {ROOM_TYPES.map((room) => (
+                <button
+                  key={room.id}
+                  type="button"
+                  onClick={() => handleRoomTypeSelect(room.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all ${
+                    selectedRoomType === room.id
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:border-primary/50 hover:bg-muted'
+                  }`}
+                >
+                  <span>{room.emoji}</span>
+                  <span>{room.name}</span>
+                </button>
+              ))}
             </div>
-            <div className="space-y-2">
+          </CardContent>
+        </Card>
+
+        {/* Furniture Filters */}
+        <Card className="mt-8 shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              Furniture Preferences
+            </CardTitle>
+            <CardDescription>
+              Click once to <span className="text-green-600 font-medium">include</span> an item, click again to <span className="text-red-600 font-medium">exclude</span> it, click a third time to clear.
+              {!selectedRoomType && " Select a room type above to see suggested furniture."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedRoomType ? (
+              <>
+                {(includedCount > 0 || excludedCount > 0) && (
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pb-2 border-b">
+                    {includedCount > 0 && (
+                      <span className="flex items-center gap-1 text-green-600">
+                        <Check className="w-3 h-3" /> {includedCount} included
+                      </span>
+                    )}
+                    {excludedCount > 0 && (
+                      <span className="flex items-center gap-1 text-red-600 ml-2">
+                        <X className="w-3 h-3" /> {excludedCount} excluded
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFurnitureSelections({})}
+                      className="ml-auto text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {furnitureItems.map((item) => {
+                    const state = furnitureSelections[item] || "neutral";
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => toggleFurniture(item)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                          state === "include"
+                            ? "bg-green-50 border-green-400 text-green-700 hover:bg-green-100"
+                            : state === "exclude"
+                            ? "bg-red-50 border-red-400 text-red-700 hover:bg-red-100 line-through"
+                            : "bg-muted border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {state === "include" && <Check className="w-3 h-3" />}
+                        {state === "exclude" && <X className="w-3 h-3" />}
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Select a room type above to choose specific furniture items to include or exclude.
+              </p>
+            )}
+
+            <div className="space-y-2 pt-2">
               <Label htmlFor="custom-prompt" className="text-base font-medium">Additional Details (optional)</Label>
               <Textarea
                 id="custom-prompt"
-                placeholder="e.g., large bookshelf, leather couch, warm lighting, indoor plants..."
+                placeholder="e.g., warm lighting, indoor plants, exposed wooden beams..."
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 className="resize-none"
                 rows={3}
               />
-              <p className="text-sm text-muted-foreground">Describe specific items or details you want in the room</p>
+              <p className="text-sm text-muted-foreground">Describe any other specific details you want in the room</p>
             </div>
           </CardContent>
         </Card>
@@ -473,16 +625,16 @@ const Transform = () => {
                       alt="Transformed room"
                       className="w-full rounded-lg object-cover"
                     />
-                   <div className="mt-4 flex justify-center">
-                     <Button
-                       size="sm"
-                       className="flex items-center gap-2"
-                       onClick={() => handleDownload(transformationResult.transformed_image_url)}
-                     >
-                       <Download className="w-4 h-4" />
-                       Download
-                     </Button>
-                   </div>
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        size="sm"
+                        className="flex items-center gap-2"
+                        onClick={() => handleDownload(transformationResult.transformed_image_url)}
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
