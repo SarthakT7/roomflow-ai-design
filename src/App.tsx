@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Transform from "./pages/Transform";
 import { PricingPage } from "./pages/Pricing";
 import Examples from "./pages/Examples";
+import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 import RequireAuth from "./pages/RequireAuth";
 
@@ -27,6 +28,11 @@ const App = () => (
             <Route path="/transform" element={
               <RequireAuth>
                 <Transform />
+              </RequireAuth>
+            } />
+            <Route path="/history" element={
+              <RequireAuth>
+                <History />
               </RequireAuth>
             } />
             <Route path="/pricing" element={<PricingPage />} />
