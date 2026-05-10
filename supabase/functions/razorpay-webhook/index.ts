@@ -7,7 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper to verify Razorpay webhook signature
 async function verifySignature(body: string, signature: string, secret: string) {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -17,7 +16,6 @@ async function verifySignature(body: string, signature: string, secret: string) 
     false,
     ["sign", "verify"]
   );
-  const sigArray = encoder.encode(signature);
   const signed = await crypto.subtle.sign(
     "HMAC",
     key,
@@ -51,25 +49,78 @@ serve(async (req) => {
     }
 
     const event = JSON.parse(body);
+    const webhookSecret = Deno.env.get("RAZORPAY_WEBHOOK_SECRET");
+
+    if (webhookSecret) {
+      const isValid = await verifySignature(body, signature, webhookSecret);
+      if (!isValid) {
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    }
 
     if (event.event === "order.paid") {
       const razorpay_order_id = event.payload.order.entity.id;
+      const razorpay_payment_id = event.payload.payment?.entity?.id || null;
       // Update the order in Supabase DB
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const { error: dbError } = await supabase
+
+      const { data: order, error: findError } = await supabase
         .from("orders")
-        .update({ status: "paid", updated_at: new Date().toISOString() })
-        .eq("razorpay_order_id", razorpay_order_id);
-      if (dbError) {
+        .select("*")
+        .eq("razorpay_order_id", razorpay_order_id)
+        .single();
+
+      if (findError || !order) {
         return new Response(
-          JSON.stringify({ error: dbError.message }),
+          JSON.stringify({ error: findError?.message || "Order not found" }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
+            status: 404,
           }
         );
+      }
+
+      if (order.status !== "paid") {
+        const { error: dbError } = await supabase
+        .from("orders")
+          .update({
+            status: "paid",
+            razorpay_payment_id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
+
+        if (dbError) {
+          return new Response(
+            JSON.stringify({ error: dbError.message }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+
+        const { error: creditError } = await supabase.rpc("grant_user_credits", {
+          p_user_id: order.user_id,
+          p_delta: order.credits,
+          p_order_id: order.id,
+          p_reason: "razorpay_webhook",
+        });
+
+        if (creditError) {
+          return new Response(
+            JSON.stringify({ error: creditError.message }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
       }
     }
 

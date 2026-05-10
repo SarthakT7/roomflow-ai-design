@@ -8,90 +8,108 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { amount, currency = "INR", receipt, notes, user_id } = await req.json();
+    const { plan_id } = await req.json();
+    const authorization = req.headers.get("Authorization");
 
-    if (!amount || !user_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: amount, user_id" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
+    if (!plan_id || !authorization) {
+      return new Response(JSON.stringify({ error: "Missing plan or authorization" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
 
-    // Razorpay credentials (replace with env vars in production)
-    const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID")!
-    const RAZORPAY_KEY_SECRET =Deno.env.get("RAZORPAY_KEY_SECRET")!
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authorization } },
+    });
 
-    // Prepare order payload
-    const orderPayload = {
-      amount: Math.round(amount * 100), // Razorpay expects paise
-      currency,
-      notes: notes || {},
-    };
+    const {
+      data: { user },
+      error: userError,
+    } = await authClient.auth.getUser();
 
-    // Call Razorpay Orders API
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: plan, error: planError } = await supabase
+      .from("billing_plans")
+      .select("id, name, credits, amount, currency, active")
+      .eq("id", plan_id)
+      .eq("active", true)
+      .single();
+
+    if (planError || !plan) {
+      return new Response(JSON.stringify({ error: "Plan not found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404,
+      });
+    }
+
+    const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID")!;
+    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET")!;
+    const receipt = `roomflow_${user.id.slice(0, 8)}_${Date.now()}`;
+
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization":
-          "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
+        Authorization: "Basic " + btoa(`${razorpayKeyId}:${razorpayKeySecret}`),
       },
-      body: JSON.stringify(orderPayload),
+      body: JSON.stringify({
+        amount: plan.amount * 100,
+        currency: plan.currency,
+        receipt,
+        notes: {
+          plan_id: plan.id,
+          credits: String(plan.credits),
+          user_id: user.id,
+        },
+      }),
     });
 
-    const data = await response.json();
+    const razorpayOrder = await response.json();
 
     if (!response.ok) {
-      return new Response(
-        JSON.stringify({ error: data.error || "Failed to create order" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
+      return new Response(JSON.stringify({ error: razorpayOrder.error || "Failed to create order" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
     }
-
-    // Insert order into Supabase DB
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: orderRow, error: dbError } = await supabase
       .from("orders")
       .insert({
-        razorpay_order_id: data.id,
-        user_id,
-        amount,
-        currency,
-        status: data.status || "created",
-        notes: notes || {},
+        razorpay_order_id: razorpayOrder.id,
+        user_id: user.id,
+        amount: plan.amount,
+        currency: plan.currency,
+        status: razorpayOrder.status || "created",
+        plan_id: plan.id,
+        credits: plan.credits,
+        notes: { receipt, plan_name: plan.name },
       })
       .select()
       .single();
 
-    if (dbError) {
-      return new Response(
-        JSON.stringify({ error: dbError.message }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
-    }
+    if (dbError) throw dbError;
 
     return new Response(
       JSON.stringify({
+        key_id: razorpayKeyId,
         order: orderRow,
-        razorpay: data,
+        razorpay: razorpayOrder,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -99,9 +117,10 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
-}); 
+});

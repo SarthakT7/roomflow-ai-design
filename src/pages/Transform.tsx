@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Upload, Sparkles, ArrowLeft, Download } from "lucide-react";
+import { Upload, Sparkles, ArrowLeft, Download, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const INTERIOR_STYLES = [
@@ -50,15 +53,20 @@ const INTERIOR_STYLES = [
   }
 ];
 
+type Transformation = Tables<"transformations">;
+
 const Transform = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>("");
   const [includeFurniture, setIncludeFurniture] = useState(true);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isTransforming, setIsTransforming] = useState(false);
-  const [transformationResult, setTransformationResult] = useState<any>(null);
+  const [transformationResult, setTransformationResult] = useState<Transformation | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { creditsBalance, freeTransformations, freeUsed, loading: billingLoading, refresh: refreshBilling } = useBilling();
+  const freeRemaining = Math.max(freeTransformations - freeUsed, 0);
+  const availableTransformations = creditsBalance + freeRemaining;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -116,6 +124,15 @@ const Transform = () => {
       return;
     }
 
+    if (!billingLoading && availableTransformations <= 0) {
+      toast({
+        title: "Credits required",
+        description: "You've used your free transformations. Buy credits to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsTransforming(true);
 
     try {
@@ -165,17 +182,19 @@ const Transform = () => {
       });
 
       setTransformationResult(transformation);
+      refreshBilling();
       
       // Poll for completion (simplified - in production you'd use webhooks)
       setTimeout(() => {
         checkTransformationStatus(transformation.id);
       }, 10000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Transformation error:', error);
+      const message = error instanceof Error ? error.message : "Something went wrong";
       toast({
         title: "Transformation failed",
-        description: error.message || "Something went wrong",
+        description: message,
         variant: "destructive"
       });
     } finally {
@@ -242,6 +261,39 @@ const Transform = () => {
             <p className="text-muted-foreground">Upload a photo and choose your style</p>
           </div>
         </div>
+
+        <Alert className="mb-8">
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>Transformation balance</AlertTitle>
+          <AlertDescription>
+            {billingLoading ? (
+              "Checking your available transformations..."
+            ) : (
+              <>
+                You have {availableTransformations} available transformation{availableTransformations === 1 ? "" : "s"}.
+                {" "}
+                {freeRemaining > 0
+                  ? `${freeRemaining} free and ${creditsBalance} paid credits remaining.`
+                  : `${creditsBalance} paid credit${creditsBalance === 1 ? "" : "s"} remaining.`}
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        {!billingLoading && availableTransformations <= 0 && (
+          <Alert variant="destructive" className="mb-8">
+            <Wallet className="h-4 w-4" />
+            <AlertTitle>Credits required</AlertTitle>
+            <AlertDescription>
+              You've used your free transformations. Visit pricing to add more credits.
+              <div className="mt-3">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/pricing">View Pricing</Link>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Upload Section */}
@@ -370,7 +422,7 @@ const Transform = () => {
           <Button
             size="lg"
             onClick={handleTransform}
-            disabled={!selectedFile || !selectedStyle || isTransforming}
+            disabled={!selectedFile || !selectedStyle || isTransforming || billingLoading || availableTransformations <= 0}
             className="px-8"
           >
             {isTransforming ? (

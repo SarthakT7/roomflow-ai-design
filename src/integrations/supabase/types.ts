@@ -14,6 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      billing_plans: {
+        Row: {
+          active: boolean
+          amount: number
+          credits: number
+          currency: string
+          description: string
+          id: string
+          name: string
+          popular: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          credits: number
+          currency?: string
+          description?: string
+          id: string
+          name: string
+          popular?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          credits?: number
+          currency?: string
+          description?: string
+          id?: string
+          name?: string
+          popular?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_ledger: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          order_id: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          order_id?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          order_id?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          amount: number
+          created_at: string | null
+          credits: number
+          currency: string
+          id: string
+          notes: Json | null
+          plan_id: string | null
+          razorpay_order_id: string
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          credits?: number
+          currency?: string
+          id?: string
+          notes?: Json | null
+          plan_id?: string | null
+          razorpay_order_id: string
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          credits?: number
+          currency?: string
+          id?: string
+          notes?: Json | null
+          plan_id?: string | null
+          razorpay_order_id?: string
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       transformations: {
         Row: {
           created_at: string
@@ -45,6 +177,24 @@ export type Database = {
           status?: string
           style_prompt?: string
           transformed_image_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          credits_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          credits_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          credits_balance?: number
           updated_at?: string
           user_id?: string
         }
@@ -94,7 +244,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_user_credit: {
+        Args: {
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      grant_user_credits: {
+        Args: {
+          p_delta: number
+          p_order_id: string | null
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

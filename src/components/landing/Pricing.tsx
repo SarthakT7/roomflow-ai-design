@@ -3,68 +3,46 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, Zap, Crown } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const plans = [
-  {
-    name: "Starter",
-    credits: 10,
-    price: 9,
-    description: "Perfect for trying out RoomFlow",
-    icon: Sparkles,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-    popular: false,
-    features: [
-      "10 room transformations",
-      "All design styles included",
-      "4K resolution downloads",
-      "30-day access",
-      "Email support"
-    ]
-  },
-  {
-    name: "Pro",
-    credits: 50,
-    price: 39,
-    description: "Most popular choice for designers",
-    icon: Zap,
-    color: "text-sage",
-    bgColor: "bg-sage/10",
-    popular: true,
-    features: [
-      "50 room transformations",
-      "All design styles included",
-      "4K resolution downloads",
-      "90-day access",
-      "Priority email support",
-      "Bulk download feature",
-      "Style customization"
-    ]
-  },
-  {
-    name: "Enterprise",
-    credits: 100,
-    price: 69,
-    description: "For professional design teams",
-    icon: Crown,
-    color: "text-primary-glow",
-    bgColor: "bg-primary-glow/10",
-    popular: false,
-    features: [
-      "100 room transformations",
-      "All design styles included",
-      "4K resolution downloads",
-      "180-day access",
-      "Priority phone support",
-      "Bulk download feature",
-      "Style customization",
-      "API access",
-      "Team collaboration tools"
-    ]
-  }
-];
+import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
+import { startRazorpayCheckout } from "@/lib/razorpay";
+import { useToast } from "@/hooks/use-toast";
 
 export const Pricing = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { plans, freeTransformations, refresh } = useBilling();
+  const icons = [Sparkles, Zap, Crown];
+  const colors = [
+    { color: "text-primary", bgColor: "bg-primary/10" },
+    { color: "text-sage", bgColor: "bg-sage/10" },
+    { color: "text-primary-glow", bgColor: "bg-primary-glow/10" },
+  ];
+
+  const handleCheckout = async (plan: (typeof plans)[number]) => {
+    if (!user) return;
+
+    try {
+      await startRazorpayCheckout({
+        plan,
+        email: user.email,
+        name: user.user_metadata?.full_name || user.email,
+      });
+      await refresh();
+      toast({
+        title: "Payment successful",
+        description: `${plan.credits} transformations were added to your account.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Payment could not be completed.";
+      toast({
+        title: "Payment failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <section id="pricing" className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -75,14 +53,24 @@ export const Pricing = () => {
             <span className="bg-gradient-primary bg-clip-text text-transparent"> Pricing</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Choose the perfect plan for your room transformation needs. 
-            All plans include our full suite of AI-powered design tools.
+            Start with {freeTransformations} free transformations, then add small credit packs whenever you need more.
           </p>
         </div>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan, index) => (
+          {plans.map((plan, index) => {
+              const Icon = icons[index] || Sparkles;
+              const palette = colors[index] || colors[0];
+              const features = [
+                `${plan.credits} room transformations`,
+                "All design styles included",
+                "High-resolution downloads",
+                "Credits stay on your account",
+                "Secure Razorpay checkout",
+              ];
+
+              return (
             <Card 
               key={plan.name}
               className={`relative p-8 hover:shadow-elegant transition-all duration-300 animate-fade-in border-border/50 hover:border-primary/20 ${
@@ -99,8 +87,8 @@ export const Pricing = () => {
 
               {/* Plan Header */}
               <div className="text-center mb-8">
-                <div className={`inline-flex p-3 rounded-lg ${plan.bgColor} mb-4`}>
-                  <plan.icon className={`w-8 h-8 ${plan.color}`} />
+                <div className={`inline-flex p-3 rounded-lg ${palette.bgColor} mb-4`}>
+                  <Icon className={`w-8 h-8 ${palette.color}`} />
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
                 <p className="text-muted-foreground mb-6">{plan.description}</p>
@@ -108,7 +96,7 @@ export const Pricing = () => {
                 {/* Price */}
                 <div className="mb-6">
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-4xl font-bold text-foreground">${plan.price}</span>
+                    <span className="text-4xl font-bold text-foreground">INR {plan.amount}</span>
                     <span className="text-muted-foreground">/one-time</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -119,7 +107,7 @@ export const Pricing = () => {
 
               {/* Features */}
               <div className="space-y-4 mb-8">
-                {plan.features.map((feature) => (
+                {features.map((feature) => (
                   <div key={feature} className="flex items-center gap-3">
                     <div className="p-1 rounded-full bg-primary/10">
                       <Check className="w-4 h-4 text-primary" />
@@ -133,14 +121,20 @@ export const Pricing = () => {
               <Button 
                 variant={plan.popular ? "hero" : "default"} 
                 className="w-full"
-                asChild
+                asChild={!user}
+                onClick={user ? () => handleCheckout(plan) : undefined}
               >
-                <Link to="/auth">
-                  {plan.popular ? "Get Started" : "Choose Plan"}
-                </Link>
+                {user ? (
+                  plan.popular ? "Buy Credits" : "Choose Plan"
+                ) : (
+                  <Link to="/auth">
+                    {plan.popular ? "Get Started" : "Choose Plan"}
+                  </Link>
+                )}
               </Button>
             </Card>
-          ))}
+              );
+          })}
         </div>
 
         {/* FAQ Section */}
@@ -152,15 +146,13 @@ export const Pricing = () => {
             <div>
               <h4 className="font-semibold text-foreground mb-2">How long do credits last?</h4>
               <p className="text-sm text-muted-foreground">
-                Credits are valid for the duration specified in your plan (30-180 days). 
-                Unused credits expire after the access period.
+                Credits stay on your account until you use them.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-foreground mb-2">Can I upgrade my plan?</h4>
+              <h4 className="font-semibold text-foreground mb-2">Can I buy more later?</h4>
               <p className="text-sm text-muted-foreground">
-                Yes! You can upgrade to a higher tier at any time. 
-                We'll prorate the difference based on your remaining credits.
+                Yes. You can add another credit pack whenever your balance runs low.
               </p>
             </div>
             <div>
@@ -173,7 +165,7 @@ export const Pricing = () => {
             <div>
               <h4 className="font-semibold text-foreground mb-2">Is there a free trial?</h4>
               <p className="text-sm text-muted-foreground">
-                Yes! New users get 3 free transformations to try out RoomFlow 
+                Yes! New users get {freeTransformations} free transformations to try out RoomFlow 
                 before choosing a plan.
               </p>
             </div>

@@ -13,13 +13,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-    
+
+  let consumedPaidCredit = false;
+  let currentUserId: string | null = null;
+  let serviceClient: ReturnType<typeof createClient> | null = null;
+
   try {
     const { imageUrl, prompt, transformationId } = await req.json();
+    const authorization = req.headers.get("Authorization");
 
-    if (!imageUrl || !prompt || !transformationId) {
+    if (!imageUrl || !prompt || !transformationId || !authorization) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing required fields or authorization" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -34,8 +39,76 @@ serve(async (req) => {
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    serviceClient = supabase;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authorization } },
+    });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await authClient.auth.getUser();
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+    currentUserId = user.id;
+
+    const { data: transformation, error: transformationError } = await supabase
+      .from("transformations")
+      .select("id, user_id")
+      .eq("id", transformationId)
+      .single();
+
+    if (transformationError || !transformation || transformation.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Transformation not found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404,
+      });
+    }
+
+    const { data: freeSetting } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "free_transformations")
+      .maybeSingle();
+
+    const freeTransformations =
+      typeof freeSetting?.value === "number" ? freeSetting.value : 3;
+
+    const { count: usedFreeCount } = await supabase
+      .from("transformations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .in("status", ["pending", "processing", "completed"]);
+
+    const shouldConsumeCredit = (usedFreeCount ?? 0) > freeTransformations;
+
+    if (shouldConsumeCredit) {
+      const { data: consumed, error: consumeError } = await supabase.rpc("consume_user_credit", {
+        p_user_id: user.id,
+        p_reason: "room_transformation",
+      });
+
+      if (consumeError || !consumed) {
+        await supabase
+          .from("transformations")
+          .update({ status: "failed" })
+          .eq("id", transformationId);
+
+        return new Response(JSON.stringify({ error: "No transformation credits remaining" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402,
+        });
+      }
+      consumedPaidCredit = true;
+    }
 
     // Create webhook URL for status updates
     const webhookUrl = `${supabaseUrl}/functions/v1/replicate-webhook`;
@@ -88,6 +161,14 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in transform-room function:", error);
+    if (consumedPaidCredit && currentUserId && serviceClient) {
+      await serviceClient.rpc("grant_user_credits", {
+        p_user_id: currentUserId,
+        p_delta: 1,
+        p_order_id: null,
+        p_reason: "room_transformation_refund",
+      });
+    }
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
