@@ -42,7 +42,7 @@ export const Header = () => {
                 <Link to="/transform">Transform Room</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link to="/history">My History</Link>
+                <Link to="/history">My Transformations</Link>
               </Button>
               <Button variant="ghost" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />
