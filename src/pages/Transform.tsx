@@ -165,13 +165,20 @@ const Transform = () => {
 
       if (dbError) throw dbError;
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Please sign in again before transforming a room.");
+
       // Call Replicate API
       const { data, error } = await supabase.functions.invoke('transform-room', {
         body: {
           imageUrl,
           prompt: fullPrompt,
           transformationId: transformation.id
-        }
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) throw error;
