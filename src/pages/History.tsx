@@ -74,6 +74,13 @@ const History = () => {
     });
   };
 
+  const formatStatus = (status: string) => {
+    return status
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       completed: "bg-green-100 text-green-800",
@@ -83,7 +90,7 @@ const History = () => {
     };
     return (
       <span className={`text-xs font-medium px-2 py-1 rounded-full ${styles[status] || "bg-gray-100 text-gray-800"}`}>
-        {status}
+        {formatStatus(status)}
       </span>
     );
   };
