@@ -185,6 +185,14 @@ const Transform = () => {
           title: "Transformation completed!",
           description: "Your room has been transformed successfully!"
         });
+      } else if (data.status === 'failed') {
+        toast({
+          title: "Transformation failed",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        setTimeout(() => checkTransformationStatus(transformationId), 5000);
       }
     }
   };

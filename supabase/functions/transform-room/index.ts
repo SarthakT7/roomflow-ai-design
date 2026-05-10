@@ -40,13 +40,22 @@ serve(async (req) => {
     // Create webhook URL for status updates
     const webhookUrl = `${supabaseUrl}/functions/v1/replicate-webhook`;
 
-    // Call Replicate API for room transformation
+    // Call Replicate API for room transformation using SDXL model
+    const enhancedPrompt = `${prompt}, masterpiece, photorealistic, interior design magazine quality, sharp focus, 8k uhd`;
+
     const prediction = await replicate.predictions.create({
       version:
-        "76604baddc85b1b4616e1c6475eca080da339c8875bd4996705440484a6eac38",
+        "a3c091059a25590ce2d5ea13651fab63f447f21760e50c358d4b850e844f59ee",
       input: {
         image: imageUrl,
-        prompt: prompt,
+        prompt: enhancedPrompt,
+        negative_prompt: "ugly, deformed, blurry, watermark, low quality, distorted, noise, grainy, oversaturated",
+        scheduler: "DPM++ 2M Karras",
+        inference_steps: 60,
+        guidance_scale: 7,
+        depth_strength: 0.8,
+        promax_strength: 0.8,
+        refiner_strength: 0.5,
       },
       webhook: webhookUrl ,
       webhook_events_filter: ["completed"],

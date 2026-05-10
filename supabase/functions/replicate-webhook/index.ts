@@ -45,7 +45,7 @@ serve(async (req) => {
     let updateData: any = { status }
 
     if (status === 'succeeded' && output) {
-      updateData.transformed_image_url = output
+      updateData.transformed_image_url = Array.isArray(output) ? output[0] : output
       updateData.status = 'completed'
     } else if (status === 'failed') {
       updateData.status = 'failed'
