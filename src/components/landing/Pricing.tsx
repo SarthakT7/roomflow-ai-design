@@ -96,7 +96,7 @@ export const Pricing = () => {
                 {/* Price */}
                 <div className="mb-6">
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-4xl font-bold text-foreground">INR {plan.amount}</span>
+                    <span className="text-4xl font-bold text-foreground">₹{plan.amount}</span>
                     <span className="text-muted-foreground">/one-time</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
