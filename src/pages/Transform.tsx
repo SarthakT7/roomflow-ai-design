@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Upload, Sparkles, ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -51,6 +53,8 @@ const INTERIOR_STYLES = [
 const Transform = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>("");
+  const [includeFurniture, setIncludeFurniture] = useState(true);
+  const [customPrompt, setCustomPrompt] = useState("");
   const [isTransforming, setIsTransforming] = useState(false);
   const [transformationResult, setTransformationResult] = useState<any>(null);
   const { toast } = useToast();
@@ -118,9 +122,17 @@ const Transform = () => {
       // Upload image to Supabase storage
       const imageUrl = await uploadImage(selectedFile);
       
-      // Get style prompt
+      // Build prompt
       const style = INTERIOR_STYLES.find(s => s.id === selectedStyle);
       if (!style) throw new Error("Style not found");
+
+      let fullPrompt = style.prompt;
+      if (includeFurniture) {
+        fullPrompt += ", fully furnished with stylish furniture, decorative accessories, rugs, lighting fixtures, and wall art";
+      }
+      if (customPrompt.trim()) {
+        fullPrompt += `, ${customPrompt.trim()}`;
+      }
 
       // Create transformation record
       const { data: transformation, error: dbError } = await supabase
@@ -128,7 +140,7 @@ const Transform = () => {
         .insert({
           user_id: user.id,
           original_image_url: imageUrl,
-          style_prompt: style.prompt,
+          style_prompt: fullPrompt,
           status: 'pending'
         })
         .select()
@@ -140,7 +152,7 @@ const Transform = () => {
       const { data, error } = await supabase.functions.invoke('transform-room', {
         body: {
           imageUrl,
-          prompt: style.prompt,
+          prompt: fullPrompt,
           transformationId: transformation.id
         }
       });
@@ -323,6 +335,35 @@ const Transform = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Options */}
+        <Card className="mt-8 shadow-elegant">
+          <CardContent className="pt-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="furnish-toggle" className="text-base font-medium">Include Furniture</Label>
+                <p className="text-sm text-muted-foreground">Automatically add furniture and decor to the room</p>
+              </div>
+              <Switch
+                id="furnish-toggle"
+                checked={includeFurniture}
+                onCheckedChange={setIncludeFurniture}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custom-prompt" className="text-base font-medium">Additional Details (optional)</Label>
+              <Textarea
+                id="custom-prompt"
+                placeholder="e.g., large bookshelf, leather couch, warm lighting, indoor plants..."
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                className="resize-none"
+                rows={3}
+              />
+              <p className="text-sm text-muted-foreground">Describe specific items or details you want in the room</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Transform Button */}
         <div className="mt-8 text-center">
