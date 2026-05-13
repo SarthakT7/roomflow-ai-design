@@ -12,6 +12,7 @@ import Examples from "./pages/Examples";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 import RequireAuth from "./pages/RequireAuth";
+import { Analytics } from "@vercel/analytics/react";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <Analytics />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
