@@ -420,7 +420,7 @@ const Transform = () => {
             <CardDescription>Select items to include in the design</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {FURNITURE_ITEMS.map((item) => {
                 const isSelected = selectedItems.includes(item.id);
                 return (
@@ -432,13 +432,20 @@ const Transform = () => {
                         isSelected ? prev.filter((i) => i !== item.id) : [...prev, item.id]
                       )
                     }
-                    className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+                    className={`relative flex items-center justify-center px-3 py-3 rounded-lg text-sm font-medium border-2 transition-all ${
                       isSelected
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-background text-muted-foreground hover:border-primary/50"
                     }`}
                   >
                     {item.label}
+                    {isSelected && (
+                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
                   </button>
                 );
               })}
