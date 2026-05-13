@@ -10,7 +10,6 @@ import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Upload, Sparkles, ArrowLeft, Download, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -53,12 +52,27 @@ const INTERIOR_STYLES = [
   }
 ];
 
+const FURNITURE_ITEMS = [
+  { id: "sofa", label: "Sofa", prompt: "a stylish sofa" },
+  { id: "coffee-table", label: "Coffee Table", prompt: "a coffee table" },
+  { id: "dining-table", label: "Dining Table", prompt: "a dining table with chairs" },
+  { id: "bookshelf", label: "Bookshelf", prompt: "a bookshelf with books" },
+  { id: "bed", label: "Bed", prompt: "a comfortable bed with pillows" },
+  { id: "rug", label: "Rug", prompt: "an area rug" },
+  { id: "plants", label: "Plants", prompt: "indoor plants and greenery" },
+  { id: "lighting", label: "Lighting", prompt: "stylish lighting fixtures and lamps" },
+  { id: "wall-art", label: "Wall Art", prompt: "wall art and framed pictures" },
+  { id: "curtains", label: "Curtains", prompt: "elegant curtains" },
+  { id: "tv-unit", label: "TV Unit", prompt: "a TV unit with a television" },
+  { id: "desk", label: "Desk", prompt: "a work desk with a chair" },
+];
+
 type Transformation = Tables<"transformations">;
 
 const Transform = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>("");
-  const [includeFurniture, setIncludeFurniture] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isTransforming, setIsTransforming] = useState(false);
   const [transformationResult, setTransformationResult] = useState<Transformation | null>(null);
@@ -144,8 +158,12 @@ const Transform = () => {
       if (!style) throw new Error("Style not found");
 
       let fullPrompt = style.prompt;
-      if (includeFurniture) {
-        fullPrompt += ", fully furnished with stylish furniture, decorative accessories, rugs, lighting fixtures, and wall art";
+      if (selectedItems.length > 0) {
+        const itemPrompts = selectedItems
+          .map((id) => FURNITURE_ITEMS.find((item) => item.id === id)?.prompt)
+          .filter(Boolean)
+          .join(", ");
+        fullPrompt += `, furnished with ${itemPrompts}`;
       }
       if (customPrompt.trim()) {
         fullPrompt += `, ${customPrompt.trim()}`;
@@ -395,31 +413,47 @@ const Transform = () => {
           </Card>
         </div>
 
-        {/* Options */}
+        {/* Furniture & Options */}
         <Card className="mt-8 shadow-elegant">
-          <CardContent className="pt-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="furnish-toggle" className="text-base font-medium">Include Furniture</Label>
-                <p className="text-sm text-muted-foreground">Automatically add furniture and decor to the room</p>
-              </div>
-              <Switch
-                id="furnish-toggle"
-                checked={includeFurniture}
-                onCheckedChange={setIncludeFurniture}
-              />
+          <CardHeader>
+            <CardTitle className="text-lg">Furnish Your Room</CardTitle>
+            <CardDescription>Select items to include in the design</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-wrap gap-3">
+              {FURNITURE_ITEMS.map((item) => {
+                const isSelected = selectedItems.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedItems((prev) =>
+                        isSelected ? prev.filter((i) => i !== item.id) : [...prev, item.id]
+                      )
+                    }
+                    className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
             <div className="space-y-2">
               <Label htmlFor="custom-prompt" className="text-base font-medium">Additional Details (optional)</Label>
               <Textarea
                 id="custom-prompt"
-                placeholder="e.g., large bookshelf, leather couch, warm lighting, indoor plants..."
+                placeholder="e.g., warm lighting, marble floors, floor-to-ceiling windows..."
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 className="resize-none"
                 rows={3}
               />
-              <p className="text-sm text-muted-foreground">Describe specific items or details you want in the room</p>
+              <p className="text-sm text-muted-foreground">Describe anything else you want in the room</p>
             </div>
           </CardContent>
         </Card>
